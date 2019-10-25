@@ -1,0 +1,46 @@
+
+library(shiny)
+library(tm)
+library(wordcloud)
+library(RColorBrewer)
+library(SnowballC)
+Sys.setlocale(category = "LC_ALL", locale = "Turkish")
+shinyServer(function(input,output, session) {
+        
+    wc_data <- reactive({
+        
+        input$update
+        
+        isolate({
+            
+            withProgress({
+                setProgress(message = "islemde")
+                wc_file <- input$wc
+                if(!is.null(wc_file)){
+                    wc_text <- readLines(wc_file$datapath, encoding = 'UTF-8')
+                    
+                }
+                else
+                    {
+                    wc_text <- "En çok geçen kelimeler en çok olan kelimeler kelime bütünü hep kelime en çok"
+                }
+                wc_corpus = Corpus(VectorSource(wc_text))
+                wc_corpus_clean = tm_map(wc_corpus, tolower)
+                wc_corpus_clean = tm_map(wc_corpus_clean, removeNumbers)
+                wc_corpus_clean = tm_map(wc_corpus_clean, removeWords, stopwords("english"))
+                wc_corpus_clean = tm_map(wc_corpus_clean, stripWhitespace)
+                wc_corpus_clean = tm_map(wc_corpus_clean,stemDocument)
+            })
+        })
+    })
+    wordcloud_rep <- repeatable(wordcloud)
+    
+    output$wcplot <- renderPlot({
+        withProgress({
+            setProgress(message = "Olusuturuluyor")
+            wc_corpus <- wc_data()
+            wordcloud_rep(wc_corpus, min.freq = input$freq, max.words=input$max, colors=brewer.pal(8, "Dark2"), random.order = F, rot.per = .30)
+        })
+    })
+})
+
